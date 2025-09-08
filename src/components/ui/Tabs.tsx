@@ -17,7 +17,7 @@ interface TabsProps {
 export function Tabs({ tabs, defaultTab }: TabsProps) {
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id);
 
-  const activeTabContent = tabs.find(tab => tab.id === activeTab)?.content;
+  const activeTabContent = tabs.find((tab) => tab.id === activeTab)?.content;
 
   return (
     <div className="w-full">
@@ -44,9 +44,7 @@ export function Tabs({ tabs, defaultTab }: TabsProps) {
       </div>
 
       {/* Tab Content */}
-      <div className="min-h-[400px]">
-        {activeTabContent}
-      </div>
+      <div className="min-h-[400px]">{activeTabContent}</div>
     </div>
   );
 }

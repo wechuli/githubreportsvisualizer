@@ -4,6 +4,13 @@ import { ServiceData } from "@/types/billing";
 interface DataFiltersProps {
   data: ServiceData[];
   onFiltersChange: (filteredData: ServiceData[]) => void;
+  onBreakdownChange?: (breakdown: "cost" | "quantity") => void;
+  serviceType?:
+    | "actionsMinutes"
+    | "actionsStorage"
+    | "packages"
+    | "copilot"
+    | "codespaces";
 }
 
 interface FilterState {
@@ -13,47 +20,76 @@ interface FilterState {
   };
   organization: string;
   costCenter: string;
+  repository: string;
+  breakdown: "cost" | "quantity";
 }
 
-export function DataFilters({ data, onFiltersChange }: DataFiltersProps) {
+export function DataFilters({
+  data,
+  onFiltersChange,
+  onBreakdownChange,
+  serviceType,
+}: DataFiltersProps) {
   const [filters, setFilters] = useState<FilterState>({
     dateRange: { start: "", end: "" },
     organization: "",
     costCenter: "",
+    repository: "",
+    breakdown: "quantity",
   });
 
   // Get unique values for dropdowns
-  const organizations = Array.from(new Set(data.map(item => item.organization).filter(Boolean))).sort();
-  const costCenters = Array.from(new Set(data.map(item => item.costCenter).filter(Boolean))).sort();
-  
+  const organizations = Array.from(
+    new Set(data.map((item) => item.organization).filter(Boolean))
+  ).sort();
+  const costCenters = Array.from(
+    new Set(data.map((item) => item.costCenter).filter(Boolean))
+  ).sort();
+  const repositories = Array.from(
+    new Set(data.map((item) => item.repository).filter(Boolean))
+  ).sort();
+
   // Get date range from data
-  const dates = data.map(item => item.date).sort();
+  const dates = data.map((item) => item.date).sort();
   const minDate = dates[0] || "";
   const maxDate = dates[dates.length - 1] || "";
 
   // Initialize date range on first load
   useEffect(() => {
-    if (minDate && maxDate && !filters.dateRange.start && !filters.dateRange.end) {
-      setFilters(prev => ({
+    if (
+      minDate &&
+      maxDate &&
+      !filters.dateRange.start &&
+      !filters.dateRange.end
+    ) {
+      setFilters((prev) => ({
         ...prev,
-        dateRange: { start: minDate, end: maxDate }
+        dateRange: { start: minDate, end: maxDate },
       }));
     }
   }, [minDate, maxDate, filters.dateRange.start, filters.dateRange.end]);
 
   // Calculate filtered data
   const filteredData = useMemo(() => {
-    return data.filter(item => {
+    return data.filter((item) => {
       // Date range filter
-      if (filters.dateRange.start && item.date < filters.dateRange.start) return false;
-      if (filters.dateRange.end && item.date > filters.dateRange.end) return false;
-      
+      if (filters.dateRange.start && item.date < filters.dateRange.start)
+        return false;
+      if (filters.dateRange.end && item.date > filters.dateRange.end)
+        return false;
+
       // Organization filter
-      if (filters.organization && item.organization !== filters.organization) return false;
-      
+      if (filters.organization && item.organization !== filters.organization)
+        return false;
+
       // Cost center filter
-      if (filters.costCenter && item.costCenter !== filters.costCenter) return false;
-      
+      if (filters.costCenter && item.costCenter !== filters.costCenter)
+        return false;
+
+      // Repository filter
+      if (filters.repository && item.repository !== filters.repository)
+        return false;
+
       return true;
     });
   }, [data, filters]);
@@ -63,10 +99,27 @@ export function DataFilters({ data, onFiltersChange }: DataFiltersProps) {
     onFiltersChange(filteredData);
   }, [filteredData]);
 
-  const handleFilterChange = (key: string, value: string | { start: string; end: string }) => {
-    setFilters(prev => ({
+  // Notify parent of breakdown changes
+  useEffect(() => {
+    if (onBreakdownChange) {
+      onBreakdownChange(filters.breakdown);
+    }
+  }, [filters.breakdown]);
+
+  // Notify parent of initial breakdown state on mount
+  useEffect(() => {
+    if (onBreakdownChange) {
+      onBreakdownChange(filters.breakdown);
+    }
+  }, []); // Only run on mount
+
+  const handleFilterChange = (
+    key: string,
+    value: string | { start: string; end: string }
+  ) => {
+    setFilters((prev) => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }));
   };
 
@@ -75,11 +128,23 @@ export function DataFilters({ data, onFiltersChange }: DataFiltersProps) {
       dateRange: { start: minDate, end: maxDate },
       organization: "",
       costCenter: "",
+      repository: "",
+      breakdown: "quantity",
     });
   };
 
-  const hasActiveFilters = filters.organization || filters.costCenter || 
-    (filters.dateRange.start !== minDate || filters.dateRange.end !== maxDate);
+  const hasActiveFilters =
+    filters.organization ||
+    filters.costCenter ||
+    filters.repository ||
+    filters.dateRange.start !== minDate ||
+    filters.dateRange.end !== maxDate;
+
+  // Show breakdown selector for relevant service types
+  const showBreakdownSelector =
+    serviceType === "actionsMinutes" ||
+    serviceType === "actionsStorage" ||
+    serviceType === "packages";
 
   return (
     <div className="bg-gray-800/30 rounded-lg p-6 mb-6">
@@ -95,7 +160,11 @@ export function DataFilters({ data, onFiltersChange }: DataFiltersProps) {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div
+        className={`grid grid-cols-1 md:grid-cols-2 ${
+          showBreakdownSelector ? "lg:grid-cols-5" : "lg:grid-cols-4"
+        } gap-4`}
+      >
         {/* Date Range */}
         <div className="space-y-2">
           <label className="text-sm text-gray-400">Date Range</label>
@@ -105,10 +174,12 @@ export function DataFilters({ data, onFiltersChange }: DataFiltersProps) {
               value={filters.dateRange.start}
               min={minDate}
               max={maxDate}
-              onChange={(e) => handleFilterChange("dateRange", { 
-                ...filters.dateRange, 
-                start: e.target.value 
-              })}
+              onChange={(e) =>
+                handleFilterChange("dateRange", {
+                  ...filters.dateRange,
+                  start: e.target.value,
+                })
+              }
               className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <input
@@ -116,10 +187,12 @@ export function DataFilters({ data, onFiltersChange }: DataFiltersProps) {
               value={filters.dateRange.end}
               min={minDate}
               max={maxDate}
-              onChange={(e) => handleFilterChange("dateRange", { 
-                ...filters.dateRange, 
-                end: e.target.value 
-              })}
+              onChange={(e) =>
+                handleFilterChange("dateRange", {
+                  ...filters.dateRange,
+                  end: e.target.value,
+                })
+              }
               className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -134,8 +207,10 @@ export function DataFilters({ data, onFiltersChange }: DataFiltersProps) {
             className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">All Organizations</option>
-            {organizations.map(org => (
-              <option key={org} value={org}>{org}</option>
+            {organizations.map((org) => (
+              <option key={org} value={org}>
+                {org}
+              </option>
             ))}
           </select>
         </div>
@@ -149,11 +224,50 @@ export function DataFilters({ data, onFiltersChange }: DataFiltersProps) {
             className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">All Cost Centers</option>
-            {costCenters.map(cc => (
-              <option key={cc} value={cc}>{cc}</option>
+            {costCenters.map((cc) => (
+              <option key={cc} value={cc}>
+                {cc}
+              </option>
             ))}
           </select>
         </div>
+
+        {/* Repository */}
+        <div className="space-y-2">
+          <label className="text-sm text-gray-400">Repository</label>
+          <select
+            value={filters.repository}
+            onChange={(e) => handleFilterChange("repository", e.target.value)}
+            className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">All Repositories</option>
+            {repositories.map((repo) => (
+              <option key={repo} value={repo}>
+                {repo}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Breakdown Selector */}
+        {showBreakdownSelector && (
+          <div className="space-y-2">
+            <label className="text-sm text-gray-400">Breakdown By</label>
+            <select
+              value={filters.breakdown}
+              onChange={(e) =>
+                handleFilterChange(
+                  "breakdown",
+                  e.target.value as "cost" | "quantity"
+                )
+              }
+              className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="cost">Cost ($)</option>
+              <option value="quantity">Usage Volume</option>
+            </select>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -7,7 +7,12 @@ import { BillingChart } from "@/components/charts/BillingChart";
 import { ServiceChart } from "@/components/charts/ServiceChart";
 import { Tabs } from "@/components/ui/Tabs";
 import { DataFilters } from "@/components/ui/DataFilters";
-import { GitHubBillingReport, BillingData, CategorizedBillingData, ServiceData } from "@/types/billing";
+import {
+  GitHubBillingReport,
+  BillingData,
+  CategorizedBillingData,
+  ServiceData,
+} from "@/types/billing";
 
 const sampleBillingData: BillingData[] = [
   { month: "Jan", actions: 120, packages: 80, storage: 40 },
@@ -21,9 +26,20 @@ const sampleBillingData: BillingData[] = [
 export default function Home() {
   const [billingData, setBillingData] =
     useState<BillingData[]>(sampleBillingData);
-  const [categorizedData, setCategorizedData] = useState<CategorizedBillingData | null>(null);
-  const [filteredData, setFilteredData] = useState<CategorizedBillingData | null>(null);
+  const [categorizedData, setCategorizedData] =
+    useState<CategorizedBillingData | null>(null);
+  const [filteredData, setFilteredData] =
+    useState<CategorizedBillingData | null>(null);
   const [hasUploadedData, setHasUploadedData] = useState(false);
+  const [breakdown, setBreakdown] = useState<
+    Record<string, "cost" | "quantity">
+  >({
+    actionsMinutes: "quantity",
+    actionsStorage: "quantity",
+    packages: "quantity",
+    copilot: "quantity",
+    codespaces: "quantity",
+  });
 
   const handleDataLoaded = (report: GitHubBillingReport) => {
     setBillingData(report.data);
@@ -32,15 +48,53 @@ export default function Home() {
     setHasUploadedData(true);
   };
 
-  const handleFiltersChange = useCallback((serviceType: keyof CategorizedBillingData, filteredServiceData: ServiceData[]) => {
-    setFilteredData(prev => {
-      if (!prev) return null;
-      return {
+  const handleFiltersChange = useCallback(
+    (
+      serviceType: keyof CategorizedBillingData,
+      filteredServiceData: ServiceData[]
+    ) => {
+      setFilteredData((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          [serviceType]: filteredServiceData,
+        };
+      });
+    },
+    []
+  );
+
+  const handleBreakdownChange = useCallback(
+    (serviceType: string, newBreakdown: "cost" | "quantity") => {
+      setBreakdown((prev) => ({
         ...prev,
-        [serviceType]: filteredServiceData
-      };
-    });
-  }, []);
+        [serviceType]: newBreakdown,
+      }));
+    },
+    []
+  );
+
+  // Memoized breakdown change handlers to prevent re-renders
+  const handleActionsMinutesBreakdownChange = useCallback(
+    (newBreakdown: "cost" | "quantity") => {
+      handleBreakdownChange("actionsMinutes", newBreakdown);
+    },
+    [handleBreakdownChange]
+  );
+
+  const handleActionsStorageBreakdownChange = useCallback(
+    (newBreakdown: "cost" | "quantity") => {
+      handleBreakdownChange("actionsStorage", newBreakdown);
+    },
+    [handleBreakdownChange]
+  );
+
+  const handlePackagesBreakdownChange = useCallback(
+    (newBreakdown: "cost" | "quantity") => {
+      handleBreakdownChange("packages", newBreakdown);
+    },
+    [handleBreakdownChange]
+  );
 
   // Create tabs based on available data
   const createTabs = () => {
@@ -67,17 +121,33 @@ export default function Home() {
           <div>
             <DataFilters
               data={categorizedData.actionsMinutes}
-              onFiltersChange={(filtered) => handleFiltersChange("actionsMinutes", filtered)}
+              onFiltersChange={(filtered) =>
+                handleFiltersChange("actionsMinutes", filtered)
+              }
+              onBreakdownChange={handleActionsMinutesBreakdownChange}
+              serviceType="actionsMinutes"
             />
             <ServiceChart
               data={filteredData.actionsMinutes}
               title="GitHub Actions Minutes"
               serviceType="actionsMinutes"
+              breakdown={breakdown.actionsMinutes}
               useSkuAnalysis={(() => {
                 // Use SKU analysis when all organizations are shown (no organization filter applied)
-                const originalOrgs = new Set(categorizedData.actionsMinutes.map(item => item.organization).filter(Boolean));
-                const filteredOrgs = new Set(filteredData.actionsMinutes.map(item => item.organization).filter(Boolean));
-                return originalOrgs.size === filteredOrgs.size && originalOrgs.size > 1;
+                const originalOrgs = new Set(
+                  categorizedData.actionsMinutes
+                    .map((item) => item.organization)
+                    .filter(Boolean)
+                );
+                const filteredOrgs = new Set(
+                  filteredData.actionsMinutes
+                    .map((item) => item.organization)
+                    .filter(Boolean)
+                );
+                return (
+                  originalOrgs.size === filteredOrgs.size &&
+                  originalOrgs.size > 1
+                );
               })()}
             />
           </div>
@@ -90,12 +160,17 @@ export default function Home() {
           <div>
             <DataFilters
               data={categorizedData.actionsStorage}
-              onFiltersChange={(filtered) => handleFiltersChange("actionsStorage", filtered)}
+              onFiltersChange={(filtered) =>
+                handleFiltersChange("actionsStorage", filtered)
+              }
+              onBreakdownChange={handleActionsStorageBreakdownChange}
+              serviceType="actionsStorage"
             />
             <ServiceChart
               data={filteredData.actionsStorage}
               title="GitHub Actions Storage"
               serviceType="actionsStorage"
+              breakdown={breakdown.actionsStorage}
             />
           </div>
         ),
@@ -107,12 +182,17 @@ export default function Home() {
           <div>
             <DataFilters
               data={categorizedData.packages}
-              onFiltersChange={(filtered) => handleFiltersChange("packages", filtered)}
+              onFiltersChange={(filtered) =>
+                handleFiltersChange("packages", filtered)
+              }
+              onBreakdownChange={handlePackagesBreakdownChange}
+              serviceType="packages"
             />
             <ServiceChart
               data={filteredData.packages}
               title="GitHub Packages"
               serviceType="packages"
+              breakdown={breakdown.packages}
             />
           </div>
         ),
@@ -124,7 +204,10 @@ export default function Home() {
           <div>
             <DataFilters
               data={categorizedData.copilot}
-              onFiltersChange={(filtered) => handleFiltersChange("copilot", filtered)}
+              onFiltersChange={(filtered) =>
+                handleFiltersChange("copilot", filtered)
+              }
+              serviceType="copilot"
             />
             <ServiceChart
               data={filteredData.copilot}
@@ -141,7 +224,10 @@ export default function Home() {
           <div>
             <DataFilters
               data={categorizedData.codespaces}
-              onFiltersChange={(filtered) => handleFiltersChange("codespaces", filtered)}
+              onFiltersChange={(filtered) =>
+                handleFiltersChange("codespaces", filtered)
+              }
+              serviceType="codespaces"
             />
             <ServiceChart
               data={filteredData.codespaces}
@@ -151,7 +237,7 @@ export default function Home() {
           </div>
         ),
       },
-    ].filter(tab => {
+    ].filter((tab) => {
       // Only show tabs with data
       switch (tab.id) {
         case "actionsMinutes":
@@ -191,8 +277,8 @@ export default function Home() {
               </h1>
 
               <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto leading-relaxed">
-                Upload your GitHub billing report to visualize spending patterns and
-                optimize costs across all services.
+                Upload your GitHub billing report to visualize spending patterns
+                and optimize costs across all services.
                 <br />
                 <span className="text-sm text-gray-500 mt-2 block">
                   Your data is processed locally and not stored on our servers.
@@ -218,8 +304,18 @@ export default function Home() {
                   }}
                   className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-300 bg-gray-800/50 border border-gray-600 rounded-lg hover:bg-gray-700/50 hover:border-gray-500 transition-colors"
                 >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                    />
                   </svg>
                   Upload New File
                 </button>
