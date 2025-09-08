@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Navigation } from "@/components/ui/Navigation";
 import { FileUpload } from "@/components/ui/FileUpload";
 import { BillingChart } from "@/components/charts/BillingChart";
-import { GitHubBillingReport, BillingData } from "@/types/billing";
+import { ServiceChart } from "@/components/charts/ServiceChart";
+import { Tabs } from "@/components/ui/Tabs";
+import { DataFilters } from "@/components/ui/DataFilters";
+import { GitHubBillingReport, BillingData, CategorizedBillingData, ServiceData } from "@/types/billing";
 
 const sampleBillingData: BillingData[] = [
   { month: "Jan", actions: 120, packages: 80, storage: 40 },
@@ -18,12 +21,156 @@ const sampleBillingData: BillingData[] = [
 export default function Home() {
   const [billingData, setBillingData] =
     useState<BillingData[]>(sampleBillingData);
+  const [categorizedData, setCategorizedData] = useState<CategorizedBillingData | null>(null);
+  const [filteredData, setFilteredData] = useState<CategorizedBillingData | null>(null);
   const [hasUploadedData, setHasUploadedData] = useState(false);
 
   const handleDataLoaded = (report: GitHubBillingReport) => {
     setBillingData(report.data);
+    setCategorizedData(report.categorizedData || null);
+    setFilteredData(report.categorizedData || null);
     setHasUploadedData(true);
   };
+
+  const handleFiltersChange = useCallback((serviceType: keyof CategorizedBillingData, filteredServiceData: ServiceData[]) => {
+    setFilteredData(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        [serviceType]: filteredServiceData
+      };
+    });
+  }, []);
+
+  // Create tabs based on available data
+  const createTabs = () => {
+    if (!categorizedData || !filteredData) {
+      return [
+        {
+          id: "overview",
+          label: "Sample Overview",
+          content: (
+            <BillingChart
+              data={billingData}
+              title="Sample GitHub Billing Visualization"
+            />
+          ),
+        },
+      ];
+    }
+
+    return [
+      {
+        id: "actionsMinutes",
+        label: "Actions Minutes",
+        content: (
+          <div>
+            <DataFilters
+              data={categorizedData.actionsMinutes}
+              onFiltersChange={(filtered) => handleFiltersChange("actionsMinutes", filtered)}
+            />
+            <ServiceChart
+              data={filteredData.actionsMinutes}
+              title="GitHub Actions Minutes"
+              serviceType="actionsMinutes"
+              useSkuAnalysis={(() => {
+                // Use SKU analysis when all organizations are shown (no organization filter applied)
+                const originalOrgs = new Set(categorizedData.actionsMinutes.map(item => item.organization).filter(Boolean));
+                const filteredOrgs = new Set(filteredData.actionsMinutes.map(item => item.organization).filter(Boolean));
+                return originalOrgs.size === filteredOrgs.size && originalOrgs.size > 1;
+              })()}
+            />
+          </div>
+        ),
+      },
+      {
+        id: "actionsStorage",
+        label: "Actions Storage",
+        content: (
+          <div>
+            <DataFilters
+              data={categorizedData.actionsStorage}
+              onFiltersChange={(filtered) => handleFiltersChange("actionsStorage", filtered)}
+            />
+            <ServiceChart
+              data={filteredData.actionsStorage}
+              title="GitHub Actions Storage"
+              serviceType="actionsStorage"
+            />
+          </div>
+        ),
+      },
+      {
+        id: "packages",
+        label: "Packages",
+        content: (
+          <div>
+            <DataFilters
+              data={categorizedData.packages}
+              onFiltersChange={(filtered) => handleFiltersChange("packages", filtered)}
+            />
+            <ServiceChart
+              data={filteredData.packages}
+              title="GitHub Packages"
+              serviceType="packages"
+            />
+          </div>
+        ),
+      },
+      {
+        id: "copilot",
+        label: "Copilot",
+        content: (
+          <div>
+            <DataFilters
+              data={categorizedData.copilot}
+              onFiltersChange={(filtered) => handleFiltersChange("copilot", filtered)}
+            />
+            <ServiceChart
+              data={filteredData.copilot}
+              title="GitHub Copilot"
+              serviceType="copilot"
+            />
+          </div>
+        ),
+      },
+      {
+        id: "codespaces",
+        label: "Codespaces",
+        content: (
+          <div>
+            <DataFilters
+              data={categorizedData.codespaces}
+              onFiltersChange={(filtered) => handleFiltersChange("codespaces", filtered)}
+            />
+            <ServiceChart
+              data={filteredData.codespaces}
+              title="GitHub Codespaces"
+              serviceType="codespaces"
+            />
+          </div>
+        ),
+      },
+    ].filter(tab => {
+      // Only show tabs with data
+      switch (tab.id) {
+        case "actionsMinutes":
+          return categorizedData.actionsMinutes.length > 0;
+        case "actionsStorage":
+          return categorizedData.actionsStorage.length > 0;
+        case "packages":
+          return categorizedData.packages.length > 0;
+        case "copilot":
+          return categorizedData.copilot.length > 0;
+        case "codespaces":
+          return categorizedData.codespaces.length > 0;
+        default:
+          return true;
+      }
+    });
+  };
+
+  const tabs = createTabs();
 
   return (
     <div className="min-h-screen bg-gray-950 text-white">
@@ -31,42 +178,65 @@ export default function Home() {
 
       {/* Main Content */}
       <section className="relative py-32 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl md:text-7xl font-bold mb-8 bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-            Understand Your
-            <br />
-            <span className="bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent">
-              GitHub Costs
-            </span>
-          </h1>
+        <div className="max-w-7xl mx-auto">
+          {!hasUploadedData ? (
+            /* Landing Content - Only shown when no data is uploaded */
+            <div className="text-center">
+              <h1 className="text-5xl md:text-7xl font-bold mb-8 bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+                Understand Your
+                <br />
+                <span className="bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent">
+                  GitHub Costs
+                </span>
+              </h1>
 
-          <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Upload your GitHub billing report to visualize spending patterns and
-            optimize costs.
-            <br />
-            <span className="text-sm text-gray-500 mt-2 block">
-              Your data is processed locally and not stored on our servers.
-            </span>
-          </p>
+              <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto leading-relaxed">
+                Upload your GitHub billing report to visualize spending patterns and
+                optimize costs across all services.
+                <br />
+                <span className="text-sm text-gray-500 mt-2 block">
+                  Your data is processed locally and not stored on our servers.
+                </span>
+              </p>
 
-          {/* File Upload */}
-          <div className="mb-16">
-            <FileUpload onDataLoaded={handleDataLoaded} />
-          </div>
-
-          {/* Chart Visualization */}
-          <div className="max-w-6xl mx-auto">
-            <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-8">
-              <BillingChart
-                data={billingData}
-                title={
-                  hasUploadedData
-                    ? "Your GitHub Billing Data"
-                    : "Sample GitHub Billing Visualization"
-                }
-              />
+              {/* File Upload */}
+              <div className="mb-16">
+                <FileUpload onDataLoaded={handleDataLoaded} />
+              </div>
             </div>
-          </div>
+          ) : (
+            /* Analysis Content - Shown after upload */
+            <div>
+              {/* Back Button */}
+              <div className="mb-8">
+                <button
+                  onClick={() => {
+                    setHasUploadedData(false);
+                    setCategorizedData(null);
+                    setFilteredData(null);
+                    setBillingData(sampleBillingData);
+                  }}
+                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-300 bg-gray-800/50 border border-gray-600 rounded-lg hover:bg-gray-700/50 hover:border-gray-500 transition-colors"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  Upload New File
+                </button>
+              </div>
+
+              {/* Full Width Visualization */}
+              <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-xl p-8">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold mb-2">Service Breakdown</h2>
+                  <p className="text-gray-400">
+                    Detailed cost and usage analysis by GitHub service
+                  </p>
+                </div>
+                <Tabs tabs={tabs} defaultTab="actionsMinutes" />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Background decoration */}
