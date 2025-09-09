@@ -697,12 +697,30 @@ function RepositoryBasedChart({
     return acc;
   }, {} as Record<string, { cost: number; quantity: number }>);
 
+  // Get organization totals (for organization chart)
+  const orgTotals = data.reduce((acc, item) => {
+    const org = item.organization || "Unknown";
+    if (!acc[org]) {
+      acc[org] = { cost: 0, quantity: 0 };
+    }
+    acc[org].cost += item.cost;
+    acc[org].quantity += item.quantity;
+    return acc;
+  }, {} as Record<string, { cost: number; quantity: number }>);
+
   const topRepos = Object.entries(repoTotals)
     .sort(([, a], [, b]) =>
       breakdown === "cost" ? b.cost - a.cost : b.quantity - a.quantity
     )
     .slice(0, 10)
     .map(([repo]) => repo);
+
+  const topOrgs = Object.entries(orgTotals)
+    .sort(([, a], [, b]) =>
+      breakdown === "cost" ? b.cost - a.cost : b.quantity - a.quantity
+    )
+    .slice(0, 8)
+    .map(([org]) => org);
 
   // Aggregate data by date with repository breakdown
   const dailyData = data.reduce((acc, item) => {
@@ -769,6 +787,46 @@ function RepositoryBasedChart({
       quantity: othersQuantity,
     });
   }
+
+  // Organization aggregation for stacked chart
+  const otherOrgs = Object.keys(orgTotals).filter(
+    (org) => !topOrgs.includes(org)
+  );
+
+  const orgsToShow =
+    topOrgs.length > 0
+      ? [...topOrgs, ...(otherOrgs.length > 0 ? ["Others"] : [])]
+      : [];
+
+  // Create organization stacked chart data
+  const orgStackedData = data.reduce((acc, item) => {
+    const date = item.date;
+    const org = topOrgs.includes(item.organization || "Unknown")
+      ? item.organization || "Unknown"
+      : "Others";
+
+    if (!acc[date]) {
+      acc[date] = { date };
+      orgsToShow.forEach((o) => {
+        acc[date][o] = 0;
+      });
+    }
+
+    const value = breakdown === "cost" ? item.cost : item.quantity;
+    acc[date][org] = (acc[date][org] || 0) + value;
+    return acc;
+  }, {} as Record<string, any>);
+
+  const orgChartData = Object.values(orgStackedData)
+    .map((item) => ({
+      ...item,
+      date: new Date(item.date).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      }),
+    }))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(-30);
 
   const totalCost = data.reduce((sum, item) => sum + item.cost, 0);
   const totalQuantity = data.reduce((sum, item) => sum + item.quantity, 0);
@@ -933,11 +991,33 @@ function RepositoryBasedChart({
           <h3 className="text-lg font-semibold mb-4">
             Daily {getBreakdownLabel()} by Organization
           </h3>
-          <OrganizationStackedChart
-            data={data}
-            breakdown={breakdown}
-            serviceType={serviceType}
-          />
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={orgChartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
+              <YAxis stroke="#9ca3af" fontSize={12} tickFormatter={getFormatter()} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#1f2937",
+                  border: "1px solid #374151",
+                  borderRadius: "8px",
+                }}
+                formatter={(value: number) => [getFormatter()(value), getBreakdownLabel()]}
+                labelStyle={{ color: "#d1d5db" }}
+              />
+              {orgsToShow.map((org: string, index: number) => (
+                <Area
+                  key={org}
+                  type="monotone"
+                  dataKey={org}
+                  stackId="1"
+                  stroke={COLORS[index % COLORS.length]}
+                  fill={COLORS[index % COLORS.length]}
+                  fillOpacity={0.7}
+                />
+              ))}
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       )}
 

@@ -1,0 +1,7 @@
+// Test CSV data for verifying Web Worker categorization
+"date","product","sku","quantity","net_amount","organization","repository","cost_center_name"
+"2025-08-01","actions","actions_linux","100","5.00","testorg","repo1",""
+"2025-08-01","actions","actions_storage","50","2.50","testorg","repo1",""
+"2025-08-01","packages","packages","25","1.25","testorg","repo2",""
+"2025-08-01","copilot","copilot","10","0.50","testorg","repo3",""
+"2025-08-01","codespaces","codespaces","75","3.75","testorg","repo4",""
