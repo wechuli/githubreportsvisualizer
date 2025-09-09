@@ -995,14 +995,21 @@ function RepositoryBasedChart({
             <AreaChart data={orgChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} />
-              <YAxis stroke="#9ca3af" fontSize={12} tickFormatter={getFormatter()} />
+              <YAxis
+                stroke="#9ca3af"
+                fontSize={12}
+                tickFormatter={getFormatter()}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "#1f2937",
                   border: "1px solid #374151",
                   borderRadius: "8px",
                 }}
-                formatter={(value: number) => [getFormatter()(value), getBreakdownLabel()]}
+                formatter={(value: number) => [
+                  getFormatter()(value),
+                  getBreakdownLabel(),
+                ]}
                 labelStyle={{ color: "#d1d5db" }}
               />
               {orgsToShow.map((org: string, index: number) => (
