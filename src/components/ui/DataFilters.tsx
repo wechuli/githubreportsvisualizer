@@ -45,9 +45,21 @@ export function DataFilters({
   const costCenters = Array.from(
     new Set(data.map((item) => item.costCenter).filter(Boolean))
   ).sort();
-  const repositories = Array.from(
-    new Set(data.map((item) => item.repository).filter(Boolean))
-  ).sort();
+  
+  // Repositories are now filtered based on the selected organization
+  const repositories = useMemo(() => {
+    if (!filters.organization) {
+      return []; // No organization selected, so no repositories to show
+    }
+    return Array.from(
+      new Set(
+        data
+          .filter((item) => item.organization === filters.organization)
+          .map((item) => item.repository)
+          .filter(Boolean)
+      )
+    ).sort();
+  }, [data, filters.organization]);
 
   // Get date range from data
   const dates = data.map((item) => item.date).sort();
@@ -133,6 +145,14 @@ export function DataFilters({
     });
   };
 
+  const handleOrganizationChange = (org: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      organization: org,
+      repository: "", // Reset repository when organization changes
+    }));
+  };
+
   const hasActiveFilters =
     filters.organization ||
     filters.costCenter ||
@@ -162,7 +182,7 @@ export function DataFilters({
 
       <div
         className={`grid grid-cols-1 md:grid-cols-2 ${
-          showBreakdownSelector ? "lg:grid-cols-5" : "lg:grid-cols-4"
+          showBreakdownSelector ? "lg:grid-cols-4" : "lg:grid-cols-3"
         } gap-4`}
       >
         {/* Date Range */}
@@ -203,7 +223,7 @@ export function DataFilters({
           <label className="text-sm text-gray-400">Organization</label>
           <select
             value={filters.organization}
-            onChange={(e) => handleFilterChange("organization", e.target.value)}
+            onChange={(e) => handleOrganizationChange(e.target.value)}
             className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">All Organizations</option>
@@ -232,22 +252,25 @@ export function DataFilters({
           </select>
         </div>
 
-        {/* Repository */}
-        <div className="space-y-2">
-          <label className="text-sm text-gray-400">Repository</label>
-          <select
-            value={filters.repository}
-            onChange={(e) => handleFilterChange("repository", e.target.value)}
-            className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">All Repositories</option>
-            {repositories.map((repo) => (
-              <option key={repo} value={repo}>
-                {repo}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Repository (conditionally rendered) */}
+        {filters.organization && (
+          <div className="space-y-2">
+            <label className="text-sm text-gray-400">Repository</label>
+            <select
+              value={filters.repository}
+              onChange={(e) => handleFilterChange("repository", e.target.value)}
+              className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={!filters.organization}
+            >
+              <option value="">All Repositories</option>
+              {repositories.map((repo) => (
+                <option key={repo} value={repo}>
+                  {repo}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Breakdown Selector */}
         {showBreakdownSelector && (
