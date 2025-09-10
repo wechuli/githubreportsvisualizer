@@ -45,7 +45,7 @@ export function DataFilters({
   const costCenters = Array.from(
     new Set(data.map((item) => item.costCenter).filter(Boolean))
   ).sort();
-  
+
   // Repositories are now filtered based on the selected organization
   const repositories = useMemo(() => {
     if (!filters.organization) {
