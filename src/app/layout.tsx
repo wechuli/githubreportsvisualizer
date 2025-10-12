@@ -18,6 +18,9 @@ export const metadata: Metadata = {
     "Transform your GitHub billing reports into beautiful, interactive visualizations. Analyze costs, track usage trends, and optimize your GitHub spending with powerful analytics.",
   keywords:
     "GitHub, billing, cost analysis, usage reports, visualizations, analytics, GitHub Actions, spending optimization",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
