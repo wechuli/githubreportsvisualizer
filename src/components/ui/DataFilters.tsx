@@ -45,9 +45,25 @@ export function DataFilters({
   const costCenters = Array.from(
     new Set(data.map((item) => item.costCenter).filter(Boolean))
   ).sort();
-  const repositories = Array.from(
-    new Set(data.map((item) => item.repository).filter(Boolean))
-  ).sort();
+
+  // Filter repositories based on selected organization
+  const repositories = useMemo(() => {
+    if (!filters.organization) {
+      // If no organization selected, show ALL repositories
+      return Array.from(
+        new Set(data.map((item) => item.repository).filter(Boolean))
+      ).sort();
+    }
+    // Only show repositories from the selected organization
+    return Array.from(
+      new Set(
+        data
+          .filter((item) => item.organization === filters.organization)
+          .map((item) => item.repository)
+          .filter(Boolean)
+      )
+    ).sort();
+  }, [data, filters.organization]);
 
   // Get date range from data
   const dates = data.map((item) => item.date).sort();
@@ -117,10 +133,20 @@ export function DataFilters({
     key: string,
     value: string | { start: string; end: string }
   ) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
+    setFilters((prev) => {
+      // Reset repository when organization changes
+      if (key === "organization" && typeof value === "string") {
+        return {
+          ...prev,
+          organization: value,
+          repository: "", // Clear repository selection when org changes
+        };
+      }
+      return {
+        ...prev,
+        [key]: value,
+      };
+    });
   };
 
   const resetFilters = () => {
@@ -240,7 +266,11 @@ export function DataFilters({
             onChange={(e) => handleFilterChange("repository", e.target.value)}
             className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="">All Repositories</option>
+            <option value="">
+              {filters.organization
+                ? `All Repositories in ${filters.organization}`
+                : "All Repositories"}
+            </option>
             {repositories.map((repo) => (
               <option key={repo} value={repo}>
                 {repo}
