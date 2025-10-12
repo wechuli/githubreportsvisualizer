@@ -161,8 +161,7 @@ function RepositorySpecificChart({
       quantity: item.quantity,
       skuCount: item.skus.size,
     }))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(-30); // Show last 30 days
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   // SKU breakdown
   const skuData = data.reduce((acc, item) => {
@@ -405,9 +404,7 @@ function ActionsMinutesDetailedChart({
         day: "numeric",
       }),
     }))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(-30); // Show last 30 days
-
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   // Repository breakdown for pie chart (top 10 + others)
   const repoBreakdown = [
     ...topRepos.map((repo) => ({
@@ -756,9 +753,7 @@ function RepositoryBasedChart({
         day: "numeric",
       }),
     }))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(-30); // Show last 30 days
-
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   // Repository breakdown for pie chart (top 10 + others)
   const repoBreakdown = [
     ...topRepos.map((repo) => ({
@@ -825,9 +820,7 @@ function RepositoryBasedChart({
         day: "numeric",
       }),
     }))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(-30);
-
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   const totalCost = data.reduce((sum, item) => sum + item.cost, 0);
   const totalQuantity = data.reduce((sum, item) => sum + item.quantity, 0);
   const uniqueRepos = new Set(
@@ -1128,9 +1121,7 @@ function SKUBasedChart({
       skuCount: item.skus.size,
       orgCount: item.organizations.size,
     }))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .slice(-30); // Show last 30 days
-
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   // SKU breakdown for pie chart
   const skuData = data.reduce((acc, item) => {
     if (!acc[item.sku]) {

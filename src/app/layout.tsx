@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   keywords:
     "GitHub, billing, cost analysis, usage reports, visualizations, analytics, GitHub Actions, spending optimization",
   icons: {
-    icon: '/favicon.svg',
+    icon: "/favicon.svg",
   },
 };
 
