@@ -28,6 +28,7 @@ interface ServiceChartProps {
   useSkuAnalysis?: boolean; // Override to use SKU-based analysis instead of repository-based
   breakdown?: "cost" | "quantity"; // Whether to breakdown by cost or quantity
   hasMultipleOrganizations?: boolean; // Whether to show organization breakdown charts
+  storageUnit?: "gb-hours" | "gb-months"; // Unit for displaying storage data
 }
 
 const COLORS = [
@@ -44,12 +45,21 @@ const COLORS = [
   "#64748b",
 ];
 
+// Conversion constant: 1 month ≈ 730 hours (average)
+const HOURS_PER_MONTH = 730;
+
+// Convert GB-hours to GB-months
+function convertToGBMonths(gbHours: number): number {
+  return gbHours / HOURS_PER_MONTH;
+}
+
 export function ServiceChart({
   data,
   title,
   serviceType,
   useSkuAnalysis = false,
   breakdown = "quantity",
+  storageUnit = "gb-hours",
 }: ServiceChartProps) {
   if (!data || data.length === 0) {
     return (
@@ -84,6 +94,7 @@ export function ServiceChart({
         title={title}
         serviceType={serviceType}
         breakdown={breakdown}
+        storageUnit={storageUnit}
       />
     );
   }
@@ -117,6 +128,7 @@ export function ServiceChart({
         serviceType={serviceType}
         breakdown={breakdown}
         hasMultipleOrganizations={hasMultipleOrganizations}
+        storageUnit={storageUnit}
       />
     );
   } else {
@@ -126,6 +138,7 @@ export function ServiceChart({
         title={title}
         serviceType={serviceType}
         breakdown={breakdown}
+        storageUnit={storageUnit}
       />
     );
   }
@@ -136,6 +149,7 @@ function RepositorySpecificChart({
   title,
   serviceType,
   breakdown = "quantity",
+  storageUnit = "gb-hours",
 }: ServiceChartProps) {
   const repository = data[0]?.repository || "Unknown Repository";
 
@@ -187,6 +201,10 @@ function RepositorySpecificChart({
     if (serviceType === "actionsMinutes") {
       return `${value.toLocaleString()} min`;
     } else if (serviceType === "actionsStorage" || serviceType === "packages") {
+      if (storageUnit === "gb-months") {
+        const gbMonths = convertToGBMonths(value);
+        return `${gbMonths.toLocaleString(undefined, { maximumFractionDigits: 2 })} GB·mo`;
+      }
       return `${value.toLocaleString()} GB·h`;
     } else if (serviceType === "copilot") {
       return `${value.toFixed(2)} users`;
@@ -682,6 +700,7 @@ function RepositoryBasedChart({
   serviceType,
   breakdown = "quantity",
   hasMultipleOrganizations = false,
+  storageUnit = "gb-hours",
 }: ServiceChartProps) {
   // Get top 10 repositories by the selected breakdown metric
   const repoTotals = data.reduce((acc, item) => {
@@ -832,6 +851,10 @@ function RepositoryBasedChart({
     if (serviceType === "actionsMinutes") {
       return `${value.toLocaleString()} min`;
     } else if (serviceType === "actionsStorage" || serviceType === "packages") {
+      if (storageUnit === "gb-months") {
+        const gbMonths = convertToGBMonths(value);
+        return `${gbMonths.toLocaleString(undefined, { maximumFractionDigits: 2 })} GB·mo`;
+      }
       return `${value.toLocaleString()} GB·h`;
     } else if (serviceType === "copilot") {
       return `${value.toFixed(2)} users`;
@@ -1084,6 +1107,7 @@ function SKUBasedChart({
   title,
   serviceType,
   breakdown = "quantity",
+  storageUnit = "gb-hours",
 }: ServiceChartProps) {
   // Check if we have multiple organizations to show organization breakdown
   const organizations = Array.from(
@@ -1163,6 +1187,10 @@ function SKUBasedChart({
     if (serviceType === "actionsMinutes") {
       return `${value.toLocaleString()} min`;
     } else if (serviceType === "actionsStorage" || serviceType === "packages") {
+      if (storageUnit === "gb-months") {
+        const gbMonths = convertToGBMonths(value);
+        return `${gbMonths.toLocaleString(undefined, { maximumFractionDigits: 2 })} GB·mo`;
+      }
       return `${value.toLocaleString()} GB·h`;
     } else if (serviceType === "copilot") {
       return `${value.toFixed(2)} users`;

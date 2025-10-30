@@ -5,6 +5,7 @@ interface DataFiltersProps {
   data: ServiceData[];
   onFiltersChange: (filteredData: ServiceData[]) => void;
   onBreakdownChange?: (breakdown: "cost" | "quantity") => void;
+  onStorageUnitChange?: (unit: "gb-hours" | "gb-months") => void;
   serviceType?:
     | "actionsMinutes"
     | "actionsStorage"
@@ -22,12 +23,14 @@ interface FilterState {
   costCenter: string;
   repository: string;
   breakdown: "cost" | "quantity";
+  storageUnit: "gb-hours" | "gb-months";
 }
 
 export function DataFilters({
   data,
   onFiltersChange,
   onBreakdownChange,
+  onStorageUnitChange,
   serviceType,
 }: DataFiltersProps) {
   const [filters, setFilters] = useState<FilterState>({
@@ -36,6 +39,7 @@ export function DataFilters({
     costCenter: "",
     repository: "",
     breakdown: "quantity",
+    storageUnit: "gb-hours",
   });
 
   // Get unique values for dropdowns
@@ -129,6 +133,20 @@ export function DataFilters({
     }
   }, []); // Only run on mount
 
+  // Notify parent of storage unit changes
+  useEffect(() => {
+    if (onStorageUnitChange) {
+      onStorageUnitChange(filters.storageUnit);
+    }
+  }, [filters.storageUnit]);
+
+  // Notify parent of initial storage unit on mount
+  useEffect(() => {
+    if (onStorageUnitChange) {
+      onStorageUnitChange(filters.storageUnit);
+    }
+  }, []); // Only run on mount
+
   const handleFilterChange = (
     key: string,
     value: string | { start: string; end: string }
@@ -156,6 +174,7 @@ export function DataFilters({
       costCenter: "",
       repository: "",
       breakdown: "quantity",
+      storageUnit: "gb-hours",
     });
   };
 
@@ -172,6 +191,18 @@ export function DataFilters({
     serviceType === "actionsStorage" ||
     serviceType === "packages";
 
+  // Show storage unit selector for storage-related services
+  const showStorageUnitSelector =
+    serviceType === "actionsStorage" || serviceType === "packages";
+
+  // Calculate grid columns based on visible filters
+  const gridCols =
+    showBreakdownSelector && showStorageUnitSelector
+      ? "lg:grid-cols-6"
+      : showBreakdownSelector
+      ? "lg:grid-cols-5"
+      : "lg:grid-cols-4";
+
   return (
     <div className="bg-gray-800/30 rounded-lg p-6 mb-6">
       <div className="flex items-center justify-between mb-4">
@@ -186,11 +217,7 @@ export function DataFilters({
         )}
       </div>
 
-      <div
-        className={`grid grid-cols-1 md:grid-cols-2 ${
-          showBreakdownSelector ? "lg:grid-cols-5" : "lg:grid-cols-4"
-        } gap-4`}
-      >
+      <div className={`grid grid-cols-1 md:grid-cols-2 ${gridCols} gap-4`}>
         {/* Date Range */}
         <div className="space-y-2">
           <label className="text-sm text-gray-400">Date Range</label>
@@ -295,6 +322,26 @@ export function DataFilters({
             >
               <option value="cost">Cost ($)</option>
               <option value="quantity">Usage Volume</option>
+            </select>
+          </div>
+        )}
+
+        {/* Storage Unit Selector */}
+        {showStorageUnitSelector && (
+          <div className="space-y-2">
+            <label className="text-sm text-gray-400">Storage Unit</label>
+            <select
+              value={filters.storageUnit}
+              onChange={(e) =>
+                handleFilterChange(
+                  "storageUnit",
+                  e.target.value as "gb-hours" | "gb-months"
+                )
+              }
+              className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="gb-hours">GB-Hours</option>
+              <option value="gb-months">GB-Months</option>
             </select>
           </div>
         )}

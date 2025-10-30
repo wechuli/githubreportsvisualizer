@@ -40,6 +40,12 @@ export default function Home() {
     copilot: "quantity",
     codespaces: "quantity",
   });
+  const [storageUnit, setStorageUnit] = useState<
+    Record<string, "gb-hours" | "gb-months">
+  >({
+    actionsStorage: "gb-hours",
+    packages: "gb-hours",
+  });
 
   const handleDataLoaded = (report: GitHubBillingReport) => {
     setBillingData(report.data);
@@ -74,6 +80,16 @@ export default function Home() {
     []
   );
 
+  const handleStorageUnitChange = useCallback(
+    (serviceType: string, newUnit: "gb-hours" | "gb-months") => {
+      setStorageUnit((prev) => ({
+        ...prev,
+        [serviceType]: newUnit,
+      }));
+    },
+    []
+  );
+
   // Memoized breakdown change handlers to prevent re-renders
   const handleActionsMinutesBreakdownChange = useCallback(
     (newBreakdown: "cost" | "quantity") => {
@@ -94,6 +110,20 @@ export default function Home() {
       handleBreakdownChange("packages", newBreakdown);
     },
     [handleBreakdownChange]
+  );
+
+  const handleActionsStorageUnitChange = useCallback(
+    (newUnit: "gb-hours" | "gb-months") => {
+      handleStorageUnitChange("actionsStorage", newUnit);
+    },
+    [handleStorageUnitChange]
+  );
+
+  const handlePackagesUnitChange = useCallback(
+    (newUnit: "gb-hours" | "gb-months") => {
+      handleStorageUnitChange("packages", newUnit);
+    },
+    [handleStorageUnitChange]
   );
 
   // Create tabs based on available data
@@ -164,6 +194,7 @@ export default function Home() {
                 handleFiltersChange("actionsStorage", filtered)
               }
               onBreakdownChange={handleActionsStorageBreakdownChange}
+              onStorageUnitChange={handleActionsStorageUnitChange}
               serviceType="actionsStorage"
             />
             <ServiceChart
@@ -171,6 +202,7 @@ export default function Home() {
               title="GitHub Actions Storage"
               serviceType="actionsStorage"
               breakdown={breakdown.actionsStorage}
+              storageUnit={storageUnit.actionsStorage}
             />
           </div>
         ),
@@ -186,6 +218,7 @@ export default function Home() {
                 handleFiltersChange("packages", filtered)
               }
               onBreakdownChange={handlePackagesBreakdownChange}
+              onStorageUnitChange={handlePackagesUnitChange}
               serviceType="packages"
             />
             <ServiceChart
@@ -193,6 +226,7 @@ export default function Home() {
               title="GitHub Packages"
               serviceType="packages"
               breakdown={breakdown.packages}
+              storageUnit={storageUnit.packages}
             />
           </div>
         ),
