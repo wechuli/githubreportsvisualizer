@@ -25,6 +25,7 @@ The GitHub Reports Visualizer transforms complex GitHub billing CSV data into in
 - **Cost Center**: Analyze costs by business units
 - **Repository**: Smart repository filtering - shows all repos by default, automatically filters by selected organization
 - **Cost vs Quantity**: Toggle between cost analysis ($) and usage volume for Actions, Storage, and Packages
+- **Storage Units**: Switch between GB-Hours and GB-Months for storage-related services (Actions Storage, Packages)
 
 ### 📈 Interactive Visualizations
 
@@ -133,8 +134,9 @@ The parser automatically detects column names in various formats, making it comp
    - Choose repository to see repo-specific analysis
    - Filter by cost center for business unit insights
 5. **Toggle Breakdown**: Switch between Cost ($) and Usage Volume views for Actions, Storage, and Packages
-6. **Analyze Trends**: View complete historical data with no date limitations
-7. **Export Insights**: All charts and data remain in your browser for analysis
+6. **Choose Storage Units**: For storage services (Actions Storage, Packages), toggle between GB-Hours and GB-Months (1 month ≈ 730 hours)
+7. **Analyze Trends**: View complete historical data with no date limitations
+8. **Export Insights**: All charts and data remain in your browser for analysis
 
 ## 🏗️ Project Structure
 
