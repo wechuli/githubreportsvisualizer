@@ -53,6 +53,25 @@ function convertToGBMonths(gbHours: number): number {
   return gbHours / HOURS_PER_MONTH;
 }
 
+/**
+ * Format a date string for chart display, including the year
+ * when the dataset spans multiple calendar years.
+ */
+function formatDateForChart(isoDate: string, includeYear: boolean): string {
+  const d = new Date(isoDate);
+  const options: Intl.DateTimeFormatOptions = includeYear
+    ? { month: "short", day: "numeric", year: "2-digit" }
+    : { month: "short", day: "numeric" };
+  return d.toLocaleDateString("en-US", options);
+}
+
+/** Check whether an array of ISO date strings spans more than one calendar year. */
+function spansMultipleYears(dates: string[]): boolean {
+  if (dates.length === 0) return false;
+  const years = new Set(dates.map((d) => new Date(d).getFullYear()));
+  return years.size > 1;
+}
+
 export function ServiceChart({
   data,
   title,
@@ -76,13 +95,13 @@ export function ServiceChart({
 
   // Check if data is filtered to a specific repository
   const repositories = Array.from(
-    new Set(data.map((item) => item.repository).filter(Boolean))
+    new Set(data.map((item) => item.repository).filter(Boolean)),
   );
   const isRepositorySpecific = repositories.length === 1;
 
   // Check if data includes multiple organizations (for organization stacked charts)
   const organizations = Array.from(
-    new Set(data.map((item) => item.organization).filter(Boolean))
+    new Set(data.map((item) => item.organization).filter(Boolean)),
   );
   const hasMultipleOrganizations = organizations.length > 1;
 
@@ -154,41 +173,50 @@ function RepositorySpecificChart({
   const repository = data[0]?.repository || "Unknown Repository";
 
   // Aggregate data by date for the single repository
-  const dailyData = data.reduce((acc, item) => {
-    const date = item.date;
-    if (!acc[date]) {
-      acc[date] = { date, cost: 0, quantity: 0, skus: new Set() };
-    }
-    acc[date].cost += item.cost;
-    acc[date].quantity += item.quantity;
-    acc[date].skus.add(item.sku);
-    return acc;
-  }, {} as Record<string, { date: string; cost: number; quantity: number; skus: Set<string> }>);
+  const dailyData = data.reduce(
+    (acc, item) => {
+      const date = item.date;
+      if (!acc[date]) {
+        acc[date] = { date, cost: 0, quantity: 0, skus: new Set() };
+      }
+      acc[date].cost += item.cost;
+      acc[date].quantity += item.quantity;
+      acc[date].skus.add(item.sku);
+      return acc;
+    },
+    {} as Record<
+      string,
+      { date: string; cost: number; quantity: number; skus: Set<string> }
+    >,
+  );
+
+  const rawDates = Object.keys(dailyData);
+  const multiYear = spansMultipleYears(rawDates);
 
   const chartData = Object.values(dailyData)
+    .sort((a, b) => a.date.localeCompare(b.date))
     .map((item) => ({
-      date: new Date(item.date).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
+      date: formatDateForChart(item.date, multiYear),
       cost: item.cost,
       quantity: item.quantity,
       skuCount: item.skus.size,
-    }))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }));
 
   // SKU breakdown
-  const skuData = data.reduce((acc, item) => {
-    if (!acc[item.sku]) {
-      acc[item.sku] = { sku: item.sku, cost: 0, quantity: 0 };
-    }
-    acc[item.sku].cost += item.cost;
-    acc[item.sku].quantity += item.quantity;
-    return acc;
-  }, {} as Record<string, { sku: string; cost: number; quantity: number }>);
+  const skuData = data.reduce(
+    (acc, item) => {
+      if (!acc[item.sku]) {
+        acc[item.sku] = { sku: item.sku, cost: 0, quantity: 0 };
+      }
+      acc[item.sku].cost += item.cost;
+      acc[item.sku].quantity += item.quantity;
+      return acc;
+    },
+    {} as Record<string, { sku: string; cost: number; quantity: number }>,
+  );
 
   const skuBreakdown = Object.values(skuData).sort((a, b) =>
-    breakdown === "cost" ? b.cost - a.cost : b.quantity - a.quantity
+    breakdown === "cost" ? b.cost - a.cost : b.quantity - a.quantity,
   );
 
   // Calculate totals
@@ -358,15 +386,18 @@ function ActionsMinutesDetailedChart({
   breakdown = "quantity",
 }: ServiceChartProps) {
   // Get top 10 repositories by total cost
-  const repoTotals = data.reduce((acc, item) => {
-    const repo = item.repository || "Unknown";
-    if (!acc[repo]) {
-      acc[repo] = { cost: 0, quantity: 0 };
-    }
-    acc[repo].cost += item.cost;
-    acc[repo].quantity += item.quantity;
-    return acc;
-  }, {} as Record<string, { cost: number; quantity: number }>);
+  const repoTotals = data.reduce(
+    (acc, item) => {
+      const repo = item.repository || "Unknown";
+      if (!acc[repo]) {
+        acc[repo] = { cost: 0, quantity: 0 };
+      }
+      acc[repo].cost += item.cost;
+      acc[repo].quantity += item.quantity;
+      return acc;
+    },
+    {} as Record<string, { cost: number; quantity: number }>,
+  );
 
   const topRepos = Object.entries(repoTotals)
     .sort(([, a], [, b]) => b.cost - a.cost)
@@ -374,14 +405,17 @@ function ActionsMinutesDetailedChart({
     .map(([repo]) => repo);
 
   // SKU breakdown
-  const skuTotals = data.reduce((acc, item) => {
-    if (!acc[item.sku]) {
-      acc[item.sku] = { cost: 0, quantity: 0 };
-    }
-    acc[item.sku].cost += item.cost;
-    acc[item.sku].quantity += item.quantity;
-    return acc;
-  }, {} as Record<string, { cost: number; quantity: number }>);
+  const skuTotals = data.reduce(
+    (acc, item) => {
+      if (!acc[item.sku]) {
+        acc[item.sku] = { cost: 0, quantity: 0 };
+      }
+      acc[item.sku].cost += item.cost;
+      acc[item.sku].quantity += item.quantity;
+      return acc;
+    },
+    {} as Record<string, { cost: number; quantity: number }>,
+  );
 
   const topSkus = Object.entries(skuTotals)
     .sort(([, a], [, b]) => b.cost - a.cost)
@@ -389,40 +423,45 @@ function ActionsMinutesDetailedChart({
     .map(([sku]) => sku);
 
   // Aggregate data by date with repository breakdown
-  const dailyData = data.reduce((acc, item) => {
-    const date = item.date;
-    const repo = topRepos.includes(item.repository || "Unknown")
-      ? item.repository || "Unknown"
-      : "Others";
+  const dailyData = data.reduce(
+    (acc, item) => {
+      const date = item.date;
+      const repo = topRepos.includes(item.repository || "Unknown")
+        ? item.repository || "Unknown"
+        : "Others";
 
-    if (!acc[date]) {
-      acc[date] = { date, total: 0, totalQuantity: 0 };
-      // Initialize all top repos and Others to 0 for both cost and quantity
-      topRepos.forEach((r) => {
-        acc[date][r] = 0;
-        acc[date][`${r}_quantity`] = 0;
-      });
-      acc[date]["Others"] = 0;
-      acc[date]["Others_quantity"] = 0;
-    }
+      if (!acc[date]) {
+        acc[date] = { date, total: 0, totalQuantity: 0 };
+        // Initialize all top repos and Others to 0 for both cost and quantity
+        topRepos.forEach((r) => {
+          acc[date][r] = 0;
+          acc[date][`${r}_quantity`] = 0;
+        });
+        acc[date]["Others"] = 0;
+        acc[date]["Others_quantity"] = 0;
+      }
 
-    acc[date][repo] = (acc[date][repo] || 0) + item.cost;
-    acc[date][`${repo}_quantity`] =
-      (acc[date][`${repo}_quantity`] || 0) + item.quantity;
-    acc[date].total += item.cost;
-    acc[date].totalQuantity += item.quantity;
-    return acc;
-  }, {} as Record<string, any>);
+      acc[date][repo] = (acc[date][repo] || 0) + item.cost;
+      acc[date][`${repo}_quantity`] =
+        (acc[date][`${repo}_quantity`] || 0) + item.quantity;
+      acc[date].total += item.cost;
+      acc[date].totalQuantity += item.quantity;
+      return acc;
+    },
+    {} as Record<string, any>,
+  );
+
+  const rawDailyDates1 = Object.keys(dailyData);
+  const multiYear1 = spansMultipleYears(rawDailyDates1);
 
   const stackedChartData = Object.values(dailyData)
+    .sort((a: any, b: any) =>
+      (a.date as string).localeCompare(b.date as string),
+    )
     .map((item) => ({
       ...item,
-      date: new Date(item.date).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
-    }))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      date: formatDateForChart(item.date, multiYear1),
+    }));
   // Repository breakdown for pie chart (top 10 + others)
   const repoBreakdown = [
     ...topRepos.map((repo) => ({
@@ -434,16 +473,16 @@ function ActionsMinutesDetailedChart({
 
   // Add "Others" if there are more than 10 repos
   const otherRepos = Object.keys(repoTotals).filter(
-    (repo) => !topRepos.includes(repo)
+    (repo) => !topRepos.includes(repo),
   );
   if (otherRepos.length > 0) {
     const othersCost = otherRepos.reduce(
       (sum, repo) => sum + repoTotals[repo].cost,
-      0
+      0,
     );
     const othersQuantity = otherRepos.reduce(
       (sum, repo) => sum + repoTotals[repo].quantity,
-      0
+      0,
     );
     repoBreakdown.push({
       name: "Others",
@@ -462,7 +501,7 @@ function ActionsMinutesDetailedChart({
   const totalCost = data.reduce((sum, item) => sum + item.cost, 0);
   const totalQuantity = data.reduce((sum, item) => sum + item.quantity, 0);
   const uniqueRepos = new Set(
-    data.map((item) => item.repository).filter(Boolean)
+    data.map((item) => item.repository).filter(Boolean),
   ).size;
   const uniqueSkus = new Set(data.map((item) => item.sku)).size;
 
@@ -703,76 +742,87 @@ function RepositoryBasedChart({
   storageUnit = "gb-hours",
 }: ServiceChartProps) {
   // Get top 10 repositories by the selected breakdown metric
-  const repoTotals = data.reduce((acc, item) => {
-    const repo = item.repository || "Unknown";
-    if (!acc[repo]) {
-      acc[repo] = { cost: 0, quantity: 0 };
-    }
-    acc[repo].cost += item.cost;
-    acc[repo].quantity += item.quantity;
-    return acc;
-  }, {} as Record<string, { cost: number; quantity: number }>);
+  const repoTotals = data.reduce(
+    (acc, item) => {
+      const repo = item.repository || "Unknown";
+      if (!acc[repo]) {
+        acc[repo] = { cost: 0, quantity: 0 };
+      }
+      acc[repo].cost += item.cost;
+      acc[repo].quantity += item.quantity;
+      return acc;
+    },
+    {} as Record<string, { cost: number; quantity: number }>,
+  );
 
   // Get organization totals (for organization chart)
-  const orgTotals = data.reduce((acc, item) => {
-    const org = item.organization || "Unknown";
-    if (!acc[org]) {
-      acc[org] = { cost: 0, quantity: 0 };
-    }
-    acc[org].cost += item.cost;
-    acc[org].quantity += item.quantity;
-    return acc;
-  }, {} as Record<string, { cost: number; quantity: number }>);
+  const orgTotals = data.reduce(
+    (acc, item) => {
+      const org = item.organization || "Unknown";
+      if (!acc[org]) {
+        acc[org] = { cost: 0, quantity: 0 };
+      }
+      acc[org].cost += item.cost;
+      acc[org].quantity += item.quantity;
+      return acc;
+    },
+    {} as Record<string, { cost: number; quantity: number }>,
+  );
 
   const topRepos = Object.entries(repoTotals)
     .sort(([, a], [, b]) =>
-      breakdown === "cost" ? b.cost - a.cost : b.quantity - a.quantity
+      breakdown === "cost" ? b.cost - a.cost : b.quantity - a.quantity,
     )
     .slice(0, 10)
     .map(([repo]) => repo);
 
   const topOrgs = Object.entries(orgTotals)
     .sort(([, a], [, b]) =>
-      breakdown === "cost" ? b.cost - a.cost : b.quantity - a.quantity
+      breakdown === "cost" ? b.cost - a.cost : b.quantity - a.quantity,
     )
     .slice(0, 8)
     .map(([org]) => org);
 
   // Aggregate data by date with repository breakdown
-  const dailyData = data.reduce((acc, item) => {
-    const date = item.date;
-    const repo = topRepos.includes(item.repository || "Unknown")
-      ? item.repository || "Unknown"
-      : "Others";
+  const dailyData = data.reduce(
+    (acc, item) => {
+      const date = item.date;
+      const repo = topRepos.includes(item.repository || "Unknown")
+        ? item.repository || "Unknown"
+        : "Others";
 
-    if (!acc[date]) {
-      acc[date] = { date, total: 0, totalQuantity: 0 };
-      // Initialize all top repos and Others to 0 for both cost and quantity
-      topRepos.forEach((r) => {
-        acc[date][r] = 0;
-        acc[date][`${r}_quantity`] = 0;
-      });
-      acc[date]["Others"] = 0;
-      acc[date]["Others_quantity"] = 0;
-    }
+      if (!acc[date]) {
+        acc[date] = { date, total: 0, totalQuantity: 0 };
+        // Initialize all top repos and Others to 0 for both cost and quantity
+        topRepos.forEach((r) => {
+          acc[date][r] = 0;
+          acc[date][`${r}_quantity`] = 0;
+        });
+        acc[date]["Others"] = 0;
+        acc[date]["Others_quantity"] = 0;
+      }
 
-    acc[date][repo] = (acc[date][repo] || 0) + item.cost;
-    acc[date][`${repo}_quantity`] =
-      (acc[date][`${repo}_quantity`] || 0) + item.quantity;
-    acc[date].total += item.cost;
-    acc[date].totalQuantity += item.quantity;
-    return acc;
-  }, {} as Record<string, any>);
+      acc[date][repo] = (acc[date][repo] || 0) + item.cost;
+      acc[date][`${repo}_quantity`] =
+        (acc[date][`${repo}_quantity`] || 0) + item.quantity;
+      acc[date].total += item.cost;
+      acc[date].totalQuantity += item.quantity;
+      return acc;
+    },
+    {} as Record<string, any>,
+  );
+
+  const rawDailyDates2 = Object.keys(dailyData);
+  const multiYear2 = spansMultipleYears(rawDailyDates2);
 
   const stackedChartData = Object.values(dailyData)
+    .sort((a: any, b: any) =>
+      (a.date as string).localeCompare(b.date as string),
+    )
     .map((item) => ({
       ...item,
-      date: new Date(item.date).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
-    }))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      date: formatDateForChart(item.date, multiYear2),
+    }));
   // Repository breakdown for pie chart (top 10 + others)
   const repoBreakdown = [
     ...topRepos.map((repo) => ({
@@ -784,16 +834,16 @@ function RepositoryBasedChart({
 
   // Add "Others" if there are more than 10 repos
   const otherRepos = Object.keys(repoTotals).filter(
-    (repo) => !topRepos.includes(repo)
+    (repo) => !topRepos.includes(repo),
   );
   if (otherRepos.length > 0) {
     const othersCost = otherRepos.reduce(
       (sum, repo) => sum + repoTotals[repo].cost,
-      0
+      0,
     );
     const othersQuantity = otherRepos.reduce(
       (sum, repo) => sum + repoTotals[repo].quantity,
-      0
+      0,
     );
     repoBreakdown.push({
       name: "Others",
@@ -804,7 +854,7 @@ function RepositoryBasedChart({
 
   // Organization aggregation for stacked chart
   const otherOrgs = Object.keys(orgTotals).filter(
-    (org) => !topOrgs.includes(org)
+    (org) => !topOrgs.includes(org),
   );
 
   const orgsToShow =
@@ -813,37 +863,42 @@ function RepositoryBasedChart({
       : [];
 
   // Create organization stacked chart data
-  const orgStackedData = data.reduce((acc, item) => {
-    const date = item.date;
-    const org = topOrgs.includes(item.organization || "Unknown")
-      ? item.organization || "Unknown"
-      : "Others";
+  const orgStackedData = data.reduce(
+    (acc, item) => {
+      const date = item.date;
+      const org = topOrgs.includes(item.organization || "Unknown")
+        ? item.organization || "Unknown"
+        : "Others";
 
-    if (!acc[date]) {
-      acc[date] = { date };
-      orgsToShow.forEach((o) => {
-        acc[date][o] = 0;
-      });
-    }
+      if (!acc[date]) {
+        acc[date] = { date };
+        orgsToShow.forEach((o) => {
+          acc[date][o] = 0;
+        });
+      }
 
-    const value = breakdown === "cost" ? item.cost : item.quantity;
-    acc[date][org] = (acc[date][org] || 0) + value;
-    return acc;
-  }, {} as Record<string, any>);
+      const value = breakdown === "cost" ? item.cost : item.quantity;
+      acc[date][org] = (acc[date][org] || 0) + value;
+      return acc;
+    },
+    {} as Record<string, any>,
+  );
+
+  const rawOrgDates = Object.keys(orgStackedData);
+  const multiYearOrg = spansMultipleYears(rawOrgDates);
 
   const orgChartData = Object.values(orgStackedData)
+    .sort((a: any, b: any) =>
+      (a.date as string).localeCompare(b.date as string),
+    )
     .map((item) => ({
       ...item,
-      date: new Date(item.date).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
-    }))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      date: formatDateForChart(item.date, multiYearOrg),
+    }));
   const totalCost = data.reduce((sum, item) => sum + item.cost, 0);
   const totalQuantity = data.reduce((sum, item) => sum + item.quantity, 0);
   const uniqueRepos = new Set(
-    data.map((item) => item.repository).filter(Boolean)
+    data.map((item) => item.repository).filter(Boolean),
   ).size;
 
   const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
@@ -1111,50 +1166,65 @@ function SKUBasedChart({
 }: ServiceChartProps) {
   // Check if we have multiple organizations to show organization breakdown
   const organizations = Array.from(
-    new Set(data.map((item) => item.organization).filter(Boolean))
+    new Set(data.map((item) => item.organization).filter(Boolean)),
   );
   const hasMultipleOrganizations = organizations.length > 1;
 
   // Aggregate data by date
-  const dailyData = data.reduce((acc, item) => {
-    const date = item.date;
-    if (!acc[date]) {
-      acc[date] = {
-        date,
-        cost: 0,
-        quantity: 0,
-        skus: new Set(),
-        organizations: new Set(),
-      };
-    }
-    acc[date].cost += item.cost;
-    acc[date].quantity += item.quantity;
-    acc[date].skus.add(item.sku);
-    if (item.organization) acc[date].organizations.add(item.organization);
-    return acc;
-  }, {} as Record<string, { date: string; cost: number; quantity: number; skus: Set<string>; organizations: Set<string> }>);
+  const dailyData = data.reduce(
+    (acc, item) => {
+      const date = item.date;
+      if (!acc[date]) {
+        acc[date] = {
+          date,
+          cost: 0,
+          quantity: 0,
+          skus: new Set(),
+          organizations: new Set(),
+        };
+      }
+      acc[date].cost += item.cost;
+      acc[date].quantity += item.quantity;
+      acc[date].skus.add(item.sku);
+      if (item.organization) acc[date].organizations.add(item.organization);
+      return acc;
+    },
+    {} as Record<
+      string,
+      {
+        date: string;
+        cost: number;
+        quantity: number;
+        skus: Set<string>;
+        organizations: Set<string>;
+      }
+    >,
+  );
+
+  const rawSkuDates = Object.keys(dailyData);
+  const multiYearSku = spansMultipleYears(rawSkuDates);
 
   const chartData = Object.values(dailyData)
+    .sort((a, b) => a.date.localeCompare(b.date))
     .map((item) => ({
-      date: new Date(item.date).toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }),
+      date: formatDateForChart(item.date, multiYearSku),
       cost: item.cost,
       quantity: item.quantity,
       skuCount: item.skus.size,
       orgCount: item.organizations.size,
-    }))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }));
   // SKU breakdown for pie chart
-  const skuData = data.reduce((acc, item) => {
-    if (!acc[item.sku]) {
-      acc[item.sku] = { sku: item.sku, cost: 0, quantity: 0 };
-    }
-    acc[item.sku].cost += item.cost;
-    acc[item.sku].quantity += item.quantity;
-    return acc;
-  }, {} as Record<string, { sku: string; cost: number; quantity: number }>);
+  const skuData = data.reduce(
+    (acc, item) => {
+      if (!acc[item.sku]) {
+        acc[item.sku] = { sku: item.sku, cost: 0, quantity: 0 };
+      }
+      acc[item.sku].cost += item.cost;
+      acc[item.sku].quantity += item.quantity;
+      return acc;
+    },
+    {} as Record<string, { sku: string; cost: number; quantity: number }>,
+  );
 
   const skuPieData = Object.values(skuData)
     .sort((a, b) => b.cost - a.cost)
@@ -1162,15 +1232,21 @@ function SKUBasedChart({
 
   // Organization breakdown for pie chart (if multiple organizations)
   const orgData = hasMultipleOrganizations
-    ? data.reduce((acc, item) => {
-        const org = item.organization || "Unknown";
-        if (!acc[org]) {
-          acc[org] = { organization: org, cost: 0, quantity: 0 };
-        }
-        acc[org].cost += item.cost;
-        acc[org].quantity += item.quantity;
-        return acc;
-      }, {} as Record<string, { organization: string; cost: number; quantity: number }>)
+    ? data.reduce(
+        (acc, item) => {
+          const org = item.organization || "Unknown";
+          if (!acc[org]) {
+            acc[org] = { organization: org, cost: 0, quantity: 0 };
+          }
+          acc[org].cost += item.cost;
+          acc[org].quantity += item.quantity;
+          return acc;
+        },
+        {} as Record<
+          string,
+          { organization: string; cost: number; quantity: number }
+        >,
+      )
     : {};
 
   const orgPieData = hasMultipleOrganizations
