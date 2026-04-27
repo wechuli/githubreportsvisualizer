@@ -79,16 +79,18 @@ export function parseCSV(csvContent: string): {
         costCenter,
       };
 
+      const normalizedSku = sku.toLowerCase();
+
       // Categorize by product and sku
       switch (product.toLowerCase()) {
         case "actions":
-          if (sku.includes("storage")) {
+          if (normalizedSku === "actions_storage") {
             categorizedData.actionsStorage.push(serviceData);
           } else if (
-            sku.includes("linux") ||
-            sku.includes("windows") ||
-            sku.includes("macos") ||
-            sku.includes("self_hosted")
+            normalizedSku.includes("linux") ||
+            normalizedSku.includes("windows") ||
+            normalizedSku.includes("macos") ||
+            normalizedSku.includes("self_hosted")
           ) {
             categorizedData.actionsMinutes.push(serviceData);
           }

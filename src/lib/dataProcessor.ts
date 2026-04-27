@@ -189,7 +189,7 @@ export class DataProcessor {
       const sku = item.sku.toLowerCase();
 
       // Simple pattern matching for basic categorization
-      if (sku.includes("storage")) {
+      if (sku === "actions_storage") {
         categories.actionsStorage.push(item);
       } else if (
         sku.includes("action") ||
