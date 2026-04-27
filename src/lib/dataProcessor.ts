@@ -18,7 +18,7 @@ export class DataProcessor {
    */
   static aggregateByDate(
     data: ServiceData[],
-    options: ProcessingOptions = {}
+    options: ProcessingOptions = {},
   ): Record<string, any> {
     const {
       maxDataPoints = this.DEFAULT_MAX_DATA_POINTS,
@@ -81,7 +81,7 @@ export class DataProcessor {
    */
   private static sampleData(
     data: ServiceData[],
-    targetSize: number
+    targetSize: number,
   ): ServiceData[] {
     if (data.length <= targetSize) return data;
 
@@ -101,7 +101,7 @@ export class DataProcessor {
   static getTopItems<T extends Record<string, any>>(
     items: T[],
     sortKey: keyof T,
-    limit: number = 10
+    limit: number = 10,
   ): T[] {
     // Use partial sort for better performance with large datasets
     return items
@@ -120,7 +120,7 @@ export class DataProcessor {
       organization?: string;
       repository?: string;
       costCenter?: string;
-    }
+    },
   ): ServiceData[] {
     const { startDate, endDate, organization, repository, costCenter } =
       filters;
@@ -151,7 +151,7 @@ export class DataProcessor {
    */
   static getUniqueValues(
     data: ServiceData[],
-    field: keyof ServiceData
+    field: keyof ServiceData,
   ): string[] {
     const seen = new Set<string>();
     const result: string[] = [];
@@ -189,7 +189,7 @@ export class DataProcessor {
       const sku = item.sku.toLowerCase();
 
       // Simple pattern matching for basic categorization
-      if (sku.includes("storage")) {
+      if (sku === "actions_storage") {
         categories.actionsStorage.push(item);
       } else if (
         sku.includes("action") ||
@@ -217,7 +217,7 @@ export class DataProcessor {
   static aggregateByRepository(
     data: ServiceData[],
     topN: number = 10,
-    breakdown: "cost" | "quantity" = "quantity"
+    breakdown: "cost" | "quantity" = "quantity",
   ): {
     topRepos: string[];
     repoTotals: Record<string, { cost: number; quantity: number }>;
@@ -238,7 +238,7 @@ export class DataProcessor {
     // Get top repositories
     const topRepos = Object.entries(repoTotals)
       .sort(([, a], [, b]) =>
-        breakdown === "cost" ? b.cost - a.cost : b.quantity - a.quantity
+        breakdown === "cost" ? b.cost - a.cost : b.quantity - a.quantity,
       )
       .slice(0, topN)
       .map(([repo]) => repo);

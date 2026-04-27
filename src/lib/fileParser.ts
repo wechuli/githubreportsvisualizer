@@ -22,25 +22,25 @@ export function parseCSV(csvContent: string): {
   // Find column indices (flexible matching)
   const dateIndex = header.findIndex((h) => h.toLowerCase().includes("date"));
   const productIndex = header.findIndex((h) =>
-    h.toLowerCase().includes("product")
+    h.toLowerCase().includes("product"),
   );
   const skuIndex = header.findIndex((h) => h.toLowerCase().includes("sku"));
   const quantityIndex = header.findIndex((h) =>
-    h.toLowerCase().includes("quantity")
+    h.toLowerCase().includes("quantity"),
   );
   const netAmountIndex = header.findIndex((h) =>
-    h.toLowerCase().includes("net_amount")
+    h.toLowerCase().includes("net_amount"),
   );
   const organizationIndex = header.findIndex((h) =>
-    h.toLowerCase().includes("organization")
+    h.toLowerCase().includes("organization"),
   );
   const repositoryIndex = header.findIndex((h) =>
-    h.toLowerCase().includes("repository")
+    h.toLowerCase().includes("repository"),
   );
   const costCenterIndex = header.findIndex(
     (h) =>
       h.toLowerCase().includes("cost_center") ||
-      h.toLowerCase().includes("costcenter")
+      h.toLowerCase().includes("costcenter"),
   );
 
   const categorizedData: CategorizedBillingData = {
@@ -79,16 +79,18 @@ export function parseCSV(csvContent: string): {
         costCenter,
       };
 
+      const normalizedSku = sku.toLowerCase();
+
       // Categorize by product and sku
       switch (product.toLowerCase()) {
         case "actions":
-          if (sku.includes("storage")) {
+          if (normalizedSku === "actions_storage") {
             categorizedData.actionsStorage.push(serviceData);
           } else if (
-            sku.includes("linux") ||
-            sku.includes("windows") ||
-            sku.includes("macos") ||
-            sku.includes("self_hosted")
+            normalizedSku.includes("linux") ||
+            normalizedSku.includes("windows") ||
+            normalizedSku.includes("macos") ||
+            normalizedSku.includes("self_hosted")
           ) {
             categorizedData.actionsMinutes.push(serviceData);
           }
@@ -182,14 +184,17 @@ export async function processFile(file: File): Promise<FileUploadResult> {
       .flat()
       .map((item) => item.organization)
       .filter((org) => org)
-      .reduce((acc, org) => {
-        acc[org] = (acc[org] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+      .reduce(
+        (acc, org) => {
+          acc[org] = (acc[org] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
 
     const primaryOrganization =
       Object.keys(organizations).sort(
-        (a, b) => organizations[b] - organizations[a]
+        (a, b) => organizations[b] - organizations[a],
       )[0] || "Unknown";
 
     return {
